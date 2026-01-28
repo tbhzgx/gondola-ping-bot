@@ -73,12 +73,14 @@ async def on_message(message):
         f"{guild.id}/{message.channel.id}/{message.id}"
     )
 
+    scanner = message.author.display_name
     await alert_channel.send(
-        f"🚨 **GONDOLA SCAN**\n"
+        f"🚨 **GONDOLA SCAN by {scanner}**\n"
         f"**CA:** `{contract}`\n"
-        f"💬 Scan: {msg_link}\n\n"
+        f"**Link:** {msg_link}\n\n"
         f"{role.mention}"
     )
 
 
 client.run(TOKEN)
+
