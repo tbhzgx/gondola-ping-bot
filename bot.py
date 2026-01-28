@@ -1,6 +1,16 @@
 import discord
 import re
 import os
+from flask import Flask
+
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Bot is alive!"
+
+port = int(os.environ.get("PORT", 3000))
+app.run(host="0.0.0.0", port=port)
 
 TOKEN = os.environ.get("TOKEN")
 ROLE_ID = int(os.environ.get("ROLE_ID")) #discord ping
@@ -69,5 +79,6 @@ async def on_message(message):
         f"💬 Scan: {msg_link}\n\n"
         f"{role.mention}"
     )
+
 
 client.run(TOKEN)
