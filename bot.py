@@ -1,4 +1,4 @@
-import discord
+import discord #add comments
 import re
 import os
 from flask import Flask
@@ -83,4 +83,5 @@ async def on_message(message):
 
 
 client.run(TOKEN)
+
 
