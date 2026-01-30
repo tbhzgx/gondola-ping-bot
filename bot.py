@@ -10,9 +10,7 @@ from datetime import datetime
 SEEN_FILE = "/data/seen_contracts.txt"
 open(SEEN_FILE, "a").close()
 print(f"📁 Using persistence file at: {SEEN_FILE}")
-with open("seen_contracts.txt", "r") as f:
-    print("=== SCANNED CONTRACTS ===")
-    print(f.read())
+
 ##
 
 ##Network Connection##
@@ -223,6 +221,7 @@ async def on_message(message):
 
 
 client.run(TOKEN)
+
 
 
 
