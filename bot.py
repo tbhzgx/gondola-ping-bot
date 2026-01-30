@@ -7,9 +7,9 @@ import aiohttp
 from datetime import datetime
 
 ##Persistence file for first scans
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SEEN_FILE = os.path.join(BASE_DIR, "seen_contracts.txt")
+SEEN_FILE = "/data/seen_contracts.txt"
 open(SEEN_FILE, "a").close()
+print(f"📁 Using persistence file at: {SEEN_FILE}")
 with open("seen_contracts.txt", "r") as f:
     print("=== SCANNED CONTRACTS ===")
     print(f.read())
@@ -223,6 +223,7 @@ async def on_message(message):
 
 
 client.run(TOKEN)
+
 
 
 
