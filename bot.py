@@ -6,7 +6,7 @@ import threading
 import aiohttp
 from datetime import datetime
 
-open(SEEN_FILE, "w").close()
+##open(SEEN_FILE, "w").close() for deletions only
 ##Persistence file for first scans
 SEEN_FILE = "/data/seen_contracts.txt"
 open(SEEN_FILE, "a").close()
@@ -234,6 +234,7 @@ async def on_message(message):
 
 
 client.run(TOKEN)
+
 
 
 
