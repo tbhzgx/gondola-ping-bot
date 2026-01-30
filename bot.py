@@ -66,6 +66,16 @@ async def fetch_token_data(contract):
 
     pair = pairs[0]  # take most relevant pair
 
+    # 🆕 Extract Twitter link if available
+    twitter = None
+    info = pair.get("info", {})
+    socials = info.get("socials", [])
+
+for social in socials:
+    if social.get("type") == "twitter":
+        twitter = social.get("url")
+        break
+
     # 🆕 Calculate pair age in days
     age_days = None
     created_at = pair.get("pairCreatedAt")
@@ -85,6 +95,7 @@ async def fetch_token_data(contract):
         "volume": pair.get("volume", {}).get("h24"),
         "age": age_days,
         "chart": pair.get("url"),
+        "twitter": twitter,
     }
 
 
@@ -145,6 +156,7 @@ async def on_message(message):
     vol = format_usd(token["volume"]) if token else "N/A"
     age = f"{token['age']}d" if token and token["age"] is not None else "N/A"
     chart = token["chart"] if token else "N/A"
+    twitter = token["twitter"] if token and token["twitter"] else "N/A"
     ########
     
     # Build message link
@@ -159,18 +171,21 @@ async def on_message(message):
         f"🪙 **Token:** {name} ({symbol})\n"
         f"⛓ **Chain:** {chain.upper()} @ {dex}\n"
         f"💰 **FDV:** {fdv}\n"
-        f"💧 **Liquidity:** {liq}\n"
-        f"📊 **Volume (24h):** {vol}\n"
-        f"⏱ **Pair Age:** {age}\n\n"
+        #f"💧 **Liquidity:** {liq}\n"
+        #f"📊 **Volume (24h):** {vol}\n"
+        #f"⏱ **Pair Age:** {age}\n\n"
         f"🔗 **Chart:** {chart}\n"
+        f"🐦 **Twitter:** {twitter}\n"
         
         f"📄 **CA:** `{contract}`\n"
         f"🔍 **Source:** {msg_link}\n\n"
+
         #f"{role.mention}"
     )
 
 
 client.run(TOKEN)
+
 
 
 
