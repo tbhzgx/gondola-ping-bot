@@ -3,6 +3,8 @@ import re
 import os
 from flask import Flask
 import threading
+import aiohttp
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -36,6 +38,62 @@ SOL_REGEX = re.compile(r"\b[1-9A-HJ-NP-Za-km-z]{32,44}\b")
 
 seen_contracts = set()
 
+################
+def format_usd(value):
+    if not value:
+        return "N/A"
+    if value >= 1_000_000_000:
+        return f"${value/1_000_000_000:.2f}B"
+    if value >= 1_000_000:
+        return f"${value/1_000_000:.2f}M"
+    if value >= 1_000:
+        return f"${value/1_000:.2f}K"
+    return f"${value:.0f}"
+
+##
+async def fetch_token_data(contract):
+    url = f"https://api.dexscreener.com/latest/dex/tokens/{contract}"
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, timeout=10) as resp:
+            if resp.status != 200:
+                return None
+            data = await resp.json()
+
+    pairs = data.get("pairs")
+    if not pairs:
+        return None
+
+    pair = pairs[0]  # take most relevant pair
+
+    # 🆕 Calculate pair age in days
+    age_days = None
+    created_at = pair.get("pairCreatedAt")
+    if created_at:
+        age_days = (
+            datetime.utcnow()
+            - datetime.utcfromtimestamp(created_at / 1000)
+        ).days
+
+    return {
+        "name": pair["baseToken"]["name"],
+        "symbol": pair["baseToken"]["symbol"],
+        "chain": pair["chainId"],
+        "dex": pair["dexId"],
+        "fdv": pair.get("fdv"),
+        "liquidity": pair.get("liquidity", {}).get("usd"),
+        "volume": pair.get("volume", {}).get("h24"),
+        "age": age_days,
+        "chart": pair.get("url"),
+    }
+
+
+
+
+
+
+
+################
 @client.event
 async def on_ready():
     print(f"🟢 Logged in as {client.user}")
@@ -75,6 +133,20 @@ async def on_message(message):
     if not role or not alert_channel:
         return
 
+    ###new###
+    token = await fetch_token_data(contract)
+
+    name = token["name"] if token else "Unknown"
+    symbol = token["symbol"] if token else "?"
+    chain = token["chain"] if token else "?"
+    dex = token["dex"] if token else "?"
+    fdv = format_usd(token["fdv"]) if token else "N/A"
+    liq = format_usd(token["liquidity"]) if token else "N/A"
+    vol = format_usd(token["volume"]) if token else "N/A"
+    age = f"{token['age']}d" if token and token["age"] is not None else "N/A"
+    chart = token["chart"] if token else "N/A"
+    ########
+    
     # Build message link
     msg_link = (
         f"https://discord.com/channels/"
@@ -83,14 +155,23 @@ async def on_message(message):
 
     scanner = message.author.display_name
     await alert_channel.send(
-        f"🚨 **GONDOLA SCAN by {scanner}**\n"
-        f"**CA:** {contract}\n"
-        f"**Link:** {msg_link}\n\n"
-        f"{role.mention}"
+        f"🚨 **GONDOLA SCAN — {scanner}**\n\n"
+        f"🪙 **Token:** {name} ({symbol})\n"
+        f"⛓ **Chain:** {chain.upper()} @ {dex}\n"
+        f"💰 **FDV:** {fdv}\n"
+        f"💧 **Liquidity:** {liq}\n"
+        f"📊 **Volume (24h):** {vol}\n"
+        f"⏱ **Pair Age:** {age}\n\n"
+        f"🔗 **Chart:** {chart}\n"
+        
+        f"📄 **CA:** `{contract}`\n"
+        f"🔍 **Source:** {msg_link}\n\n"
+        #f"{role.mention}"
     )
 
 
 client.run(TOKEN)
+
 
 
 
