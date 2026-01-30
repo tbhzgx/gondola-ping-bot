@@ -86,11 +86,12 @@ async def on_message(message):
         f"🚨 **GONDOLA SCAN by {scanner}**\n"
         f"**CA:** {contract}\n"
         f"**Link:** {msg_link}\n\n"
-        #f"{role.mention}"
+        f"{role.mention}"
     )
 
 
 client.run(TOKEN)
+
 
 
 
