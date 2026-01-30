@@ -12,7 +12,7 @@ open(SEEN_FILE, "a").close()
 print(f"📁 Using persistence file at: {SEEN_FILE}")
 
 ##
-
+    
 ##Network Connection##
 app = Flask(__name__)
 
@@ -56,10 +56,18 @@ EVM_REGEX = re.compile(r"\b0x[a-fA-F0-9]{40}\b")
 SOL_REGEX = re.compile(r"\b[1-9A-HJ-NP-Za-km-z]{32,44}\b")
 
 ##Take stored CAs from file upon bot restart##
-seen_contracts = set()
+##seen_contracts = set()
+seen_contracts = {}
 with open(SEEN_FILE, "r") as f:
     for line in f:
-        seen_contracts.add(line.strip())
+        line = line.strip()
+        if not line:
+            continue
+
+        user_id, contract = line.split(":", 1)
+        user_id = int(user_id)
+
+        seen_contracts.setdefault(user_id, set()).add(contract)
 
 print(f" Loaded {len(seen_contracts)} previously scanned contracts")
 ##
@@ -157,14 +165,16 @@ async def on_message(message):
     else:
         contract = sol_match.group(0)
 
-    if contract in seen_contracts:
-        return  # Already alerted, skip
+    user_seen = seen_contracts.setdefault(message.author.id, set())
+
+    if contract in user_seen:
+        return  # this user already scanned this contract
 
     ##save contract
-    seen_contracts.add(contract)
+    user_seen.add(contract)
+
     with open(SEEN_FILE, "a") as f:
-        f.write(contract + "\n")
-    print(f"✅ Saved contract: {contract}")
+        f.write(f"{message.author.id}:{contract}\n")
     print(f"📦 Total stored: {len(seen_contracts)}")
 
     guild = message.guild
@@ -223,6 +233,7 @@ async def on_message(message):
 
 
 client.run(TOKEN)
+
 
 
 
