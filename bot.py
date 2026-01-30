@@ -6,6 +6,14 @@ import threading
 import aiohttp
 from datetime import datetime
 
+##Persistence file for first scans
+SEEN_FILE = "seen_contracts.txt"
+open(SEEN_FILE, "a").close()
+with open("seen_contracts.txt", "r") as f:
+    print("=== SCANNED CONTRACTS ===")
+    print(f.read())
+##
+
 ##Network Connection##
 app = Flask(__name__)
 
@@ -39,8 +47,13 @@ client = discord.Client(intents=intents)
 EVM_REGEX = re.compile(r"\b0x[a-fA-F0-9]{40}\b")
 SOL_REGEX = re.compile(r"\b[1-9A-HJ-NP-Za-km-z]{32,44}\b")
 
+##Take stored CAs from file upon bot restart##
 seen_contracts = set()
-
+if os.path.exists(SEEN_FILE):
+    with open(SEEN_FILE, "r") as f:
+        for line in f:
+            seen_contracts.add(line.strip())
+##
 ################
 def format_usd(value):
     if not value:
@@ -138,7 +151,10 @@ async def on_message(message):
     if contract in seen_contracts:
         return  # Already alerted, skip
 
+    ##save contract
     seen_contracts.add(contract)
+    with open(SEEN_FILE, "a") as f:
+        f.write(contract + "\n")
 
     guild = message.guild
     role = guild.get_role(ROLE_ID)
@@ -183,11 +199,12 @@ async def on_message(message):
         f"📄 **CA:** `{contract}`\n"
         f"🔍 **Source:** {msg_link}\n\n"
 
-        f"{role.mention}"
+        ##f"{role.mention}"
     )
 
 
 client.run(TOKEN)
+
 
 
 
