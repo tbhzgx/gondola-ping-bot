@@ -229,12 +229,13 @@ async def on_message(message):
         f"📄 **CA:** `{contract}`\n"
         f"🔍 **Source:** {msg_link}\n\n"
 
-        #f"{role.mention} {default_role.mention}"
-        f"{role.mention}"
+        f"{role.mention} {default_role.mention}"
+
     )
 
 
 client.run(TOKEN)
+
 
 
 
