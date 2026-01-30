@@ -95,7 +95,7 @@ for social in socials:
         "volume": pair.get("volume", {}).get("h24"),
         "age": age_days,
         "chart": pair.get("url"),
-        "twitter": twitter,
+        "twitter": twitter
     }
 
 
@@ -185,6 +185,7 @@ async def on_message(message):
 
 
 client.run(TOKEN)
+
 
 
 
