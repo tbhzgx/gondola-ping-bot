@@ -6,6 +6,7 @@ import threading
 import aiohttp
 from datetime import datetime
 
+##Network Connection##
 app = Flask(__name__)
 
 @app.route("/")
@@ -20,12 +21,14 @@ threading.Thread(
     target=run_flask,
     daemon=True
 ).start()
+####
 
-
+##Get env variables##
 TOKEN = os.environ.get("TOKEN")
 ROLE_ID = int(os.environ.get("ROLE_ID")) #discord ping
 ALERT_CHANNEL_ID = int(os.environ.get("ALERT_CHANNEL_ID")) #alerts channel
 ALLOWED_USER_IDS = set(int(x) for x in os.environ.get("ALLOWED_USER_IDS").split(',')) #userids that can trigger ping
+####
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -114,7 +117,7 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    # 🔒 Only allow specific users
+    # Only allow specific users
     if message.author.id not in ALLOWED_USER_IDS:
         return
 
@@ -185,6 +188,7 @@ async def on_message(message):
 
 
 client.run(TOKEN)
+
 
 
 
