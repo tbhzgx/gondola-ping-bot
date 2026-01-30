@@ -7,7 +7,8 @@ import aiohttp
 from datetime import datetime
 
 ##Persistence file for first scans
-SEEN_FILE = "seen_contracts.txt"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SEEN_FILE = os.path.join(BASE_DIR, "seen_contracts.txt")
 open(SEEN_FILE, "a").close()
 with open("seen_contracts.txt", "r") as f:
     print("=== SCANNED CONTRACTS ===")
@@ -57,10 +58,11 @@ SOL_REGEX = re.compile(r"\b[1-9A-HJ-NP-Za-km-z]{32,44}\b")
 
 ##Take stored CAs from file upon bot restart##
 seen_contracts = set()
-if os.path.exists(SEEN_FILE):
-    with open(SEEN_FILE, "r") as f:
-        for line in f:
-            seen_contracts.add(line.strip())
+with open(SEEN_FILE, "r") as f:
+    for line in f:
+        seen_contracts.add(line.strip())
+
+print(f" Loaded {len(seen_contracts)} previously scanned contracts")
 ##
 ################
 def format_usd(value):
@@ -163,6 +165,8 @@ async def on_message(message):
     seen_contracts.add(contract)
     with open(SEEN_FILE, "a") as f:
         f.write(contract + "\n")
+    print(f"✅ Saved contract: {contract}")
+    print(f"📦 Total stored: {len(seen_contracts)}")
 
     guild = message.guild
     ##role = guild.get_role(ROLE_ID) will return later
@@ -214,11 +218,12 @@ async def on_message(message):
         f"📄 **CA:** `{contract}`\n"
         f"🔍 **Source:** {msg_link}\n\n"
 
-        ##f"{role.mention}"
+        f"{role.mention}"
     )
 
 
 client.run(TOKEN)
+
 
 
 
