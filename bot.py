@@ -40,6 +40,7 @@ USER_ROLE_MAP = {
         for pair in os.environ.get("USER_ROLE_MAP").split(",")
     )
 }
+DEFAULT_ROLE_ID = int(os.environ.get("DEFAULT_ROLE_ID"))
 ALERT_CHANNEL_ID = int(os.environ.get("ALERT_CHANNEL_ID")) #alerts channel
 ##ALLOWED_USER_IDS = set(int(x) for x in os.environ.get("ALLOWED_USER_IDS").split(',')) #userids that can trigger ping, will return later
 ALLOWED_USER_IDS = set(USER_ROLE_MAP.keys())
@@ -174,6 +175,7 @@ async def on_message(message):
         return  # user has no mapped role
 
     role = guild.get_role(role_id)
+    default_role = guild.get_role(DEFAULT_ROLE_ID)
     
     alert_channel = guild.get_channel(ALERT_CHANNEL_ID)
 
@@ -216,11 +218,12 @@ async def on_message(message):
         f"📄 **CA:** `{contract}`\n"
         f"🔍 **Source:** {msg_link}\n\n"
 
-        f"{role.mention}"
+        f"{role.mention} {default_role.mention}"
     )
 
 
 client.run(TOKEN)
+
 
 
 
