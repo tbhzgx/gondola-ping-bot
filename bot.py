@@ -71,10 +71,10 @@ async def fetch_token_data(contract):
     info = pair.get("info", {})
     socials = info.get("socials", [])
 
-for social in socials:
-    if social.get("type") == "twitter":
-        twitter = social.get("url")
-        break
+    for social in socials:
+        if social.get("type") == "twitter":
+            twitter = social.get("url")
+            break
 
     # 🆕 Calculate pair age in days
     age_days = None
@@ -95,7 +95,7 @@ for social in socials:
         "volume": pair.get("volume", {}).get("h24"),
         "age": age_days,
         "chart": pair.get("url"),
-        "twitter": twitter
+        "twitter": twitter,
     }
 
 
@@ -185,6 +185,7 @@ async def on_message(message):
 
 
 client.run(TOKEN)
+
 
 
 
