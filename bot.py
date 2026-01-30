@@ -84,13 +84,14 @@ async def on_message(message):
     scanner = message.author.display_name
     await alert_channel.send(
         f"🚨 **GONDOLA SCAN by {scanner}**\n"
-        f"**CA:** `{contract}`\n"
+        f"**CA:** {contract}\n"
         f"**Link:** {msg_link}\n\n"
-        f"{role.mention}"
+        #f"{role.mention}"
     )
 
 
 client.run(TOKEN)
+
 
 
 
