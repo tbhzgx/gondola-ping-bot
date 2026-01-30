@@ -33,9 +33,17 @@ threading.Thread(
 
 ##Get env variables##
 TOKEN = os.environ.get("TOKEN")
-ROLE_ID = int(os.environ.get("ROLE_ID")) #discord ping
+##ROLE_ID = int(os.environ.get("ROLE_ID")) will return later in case mapping doesnt work out
+USER_ROLE_MAP = {
+    int(k): int(v)
+    for k, v in (
+        pair.split(":")
+        for pair in os.environ.get("USER_ROLE_MAP").split(",")
+    )
+}
 ALERT_CHANNEL_ID = int(os.environ.get("ALERT_CHANNEL_ID")) #alerts channel
-ALLOWED_USER_IDS = set(int(x) for x in os.environ.get("ALLOWED_USER_IDS").split(',')) #userids that can trigger ping
+##ALLOWED_USER_IDS = set(int(x) for x in os.environ.get("ALLOWED_USER_IDS").split(',')) #userids that can trigger ping, will return later
+ALLOWED_USER_IDS = set(USER_ROLE_MAP.keys())
 ####
 
 intents = discord.Intents.default()
@@ -157,7 +165,14 @@ async def on_message(message):
         f.write(contract + "\n")
 
     guild = message.guild
-    role = guild.get_role(ROLE_ID)
+    ##role = guild.get_role(ROLE_ID) will return later
+
+    role_id = USER_ROLE_MAP.get(message.author.id)
+    if not role_id:
+        return  # user has no mapped role
+
+    role = guild.get_role(role_id)
+    
     alert_channel = guild.get_channel(ALERT_CHANNEL_ID)
 
     if not role or not alert_channel:
@@ -204,6 +219,7 @@ async def on_message(message):
 
 
 client.run(TOKEN)
+
 
 
 
