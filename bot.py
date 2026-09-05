@@ -152,10 +152,6 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    # Only allow specific users
-    if message.author.id not in ALLOWED_USER_IDS:
-        return
-
     # Skip excluded channels or threads
     channel_id = message.channel.id
     parent_id = getattr(message.channel, "parent_id", None)
@@ -189,16 +185,23 @@ async def on_message(message):
     guild = message.guild
     ##role = guild.get_role(ROLE_ID) will return later
     role_id = USER_ROLE_MAP.get(message.author.id)
-    if not role_id:
-        return # user has no mapped role
 
-    role = guild.get_role(role_id)
+    role = guild.get_role(role_id) if role_id else None
     default_role = guild.get_role(DEFAULT_ROLE_ID)
     global_role = guild.get_role(GLOBAL_ROLE_ID)
     alert_channel = guild.get_channel(ALERT_CHANNEL_ID)
 
-    if not role or not alert_channel:
+    if not alert_channel:
         return
+
+    # Mapped scanner: their role + default + global.
+    # Unmapped scanner: global role only.
+    if role:
+        mentions = " ".join(
+            r.mention for r in (role, default_role, global_role) if r
+        )
+    else:
+        mentions = global_role.mention if global_role else ""
 
     ###new###
     token = await fetch_token_data(contract)
@@ -235,8 +238,7 @@ async def on_message(message):
         f"🐦 **Twitter:** {twitter}\n"
         f"📄 **CA:** `{contract}`\n"
         f"🔍 **Source:** {msg_link}\n\n"
-        f"{role.mention} {default_role.mention}"
-        f"{' ' + global_role.mention if global_role else ''}\n\n\n"
+        f"{mentions}\n\n\n"
     )
 
 
