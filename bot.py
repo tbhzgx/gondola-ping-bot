@@ -195,10 +195,13 @@ async def on_message(message):
         return
 
     # Mapped scanner: their role + default + global.
-    # Unmapped scanner: default + global (no personal role to add).
-    mentions = " ".join(
-        r.mention for r in (role, default_role, global_role) if r
-    )
+    # Unmapped scanner: global role only.
+    if role:
+        mentions = " ".join(
+            r.mention for r in (role, default_role, global_role) if r
+        )
+    else:
+        mentions = global_role.mention if global_role else ""
 
     ###new###
     token = await fetch_token_data(contract)
