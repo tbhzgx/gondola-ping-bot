@@ -45,6 +45,9 @@ USER_ROLE_MAP = {
 }
 DEFAULT_ROLE_ID = int(os.environ.get("DEFAULT_ROLE_ID"))
 GLOBAL_ROLE_ID = int(os.environ.get("GLOBAL_ROLE_ID"))
+# Server-first roles: pinged once per CA, not once per scanner
+FIRST_SCAN_ROLE_ID = int(os.environ.get("FIRST_SCAN_ROLE_ID")) # anyone: true server debut
+SHOTCALLER_FIRST_ROLE_ID = int(os.environ.get("SHOTCALLER_FIRST_ROLE_ID")) # first shotcaller call
 ALERT_CHANNEL_ID = int(os.environ.get("ALERT_CHANNEL_ID")) #alerts channel
 ##ALLOWED_USER_IDS = set(int(x) for x in os.environ.get("ALLOWED_USER_IDS").split(',')) #userids that can trigger ping, will return later
 ALLOWED_USER_IDS = set(USER_ROLE_MAP.keys())
@@ -79,6 +82,22 @@ with open(SEEN_FILE, "r") as f:
         seen_contracts.setdefault(user_id, set()).add(contract)
 
 print(f" Loaded {len(seen_contracts)} previously scanned contracts")
+
+# Server-wide set: every contract any user has ever scanned.
+# Derived from the same file, so existing history carries over.
+all_seen_contracts = set()
+# Shotcaller-only set: contracts scanned by users in USER_ROLE_MAP.
+# Kept separate so a random posting a CA first can't suppress the
+# shotcaller-first ping for it later.
+shotcaller_seen_contracts = set()
+
+for user_id, contracts in seen_contracts.items():
+    all_seen_contracts.update(contracts)
+    if user_id in USER_ROLE_MAP:
+        shotcaller_seen_contracts.update(contracts)
+
+print(f" {len(all_seen_contracts)} unique contracts seen server-wide")
+print(f" {len(shotcaller_seen_contracts)} of those called by shotcallers")
 ##
 
 ################
@@ -175,8 +194,16 @@ async def on_message(message):
     if contract in user_seen:
         return # this user already scanned this contract
 
+    # Must be checked BEFORE recording, or they can never be True
+    is_shotcaller = message.author.id in USER_ROLE_MAP
+    is_server_first = contract not in all_seen_contracts
+    is_shotcaller_first = is_shotcaller and contract not in shotcaller_seen_contracts
+
     ##save contract
     user_seen.add(contract)
+    all_seen_contracts.add(contract)
+    if is_shotcaller:
+        shotcaller_seen_contracts.add(contract)
     with open(SEEN_FILE, "a") as f:
         f.write(f"{message.author.id}:{contract}\n")
 
@@ -189,19 +216,37 @@ async def on_message(message):
     role = guild.get_role(role_id) if role_id else None
     default_role = guild.get_role(DEFAULT_ROLE_ID)
     global_role = guild.get_role(GLOBAL_ROLE_ID)
+    first_scan_role = guild.get_role(FIRST_SCAN_ROLE_ID)
+    shotcaller_first_role = guild.get_role(SHOTCALLER_FIRST_ROLE_ID)
     alert_channel = guild.get_channel(ALERT_CHANNEL_ID)
 
     if not alert_channel:
         return
 
+    # Every-instance roles.
     # Mapped scanner: their role + default + global.
     # Unmapped scanner: global role only.
     if role:
-        mentions = " ".join(
-            r.mention for r in (role, default_role, global_role) if r
-        )
+        mention_roles = [role, default_role, global_role]
     else:
-        mentions = global_role.mention if global_role else ""
+        mention_roles = [global_role]
+
+    # Server-first roles: added only on a CA's debut in their own scope
+    if is_server_first:
+        mention_roles.append(first_scan_role)
+    if is_shotcaller_first:
+        mention_roles.append(shotcaller_first_role)
+
+    # Badge shown at the top of the alert on a debut. Empty otherwise,
+    # so ordinary alerts render exactly as they do now.
+    tags = []
+    if is_server_first:
+        tags.append("🥇 **FIRST SERVER SCAN**")
+    if is_shotcaller_first:
+        tags.append("📣 **FIRST SHOTCALLER CALL**")
+    first_tag = ("  •  ".join(tags) + "\n\n") if tags else ""
+
+    mentions = " ".join(r.mention for r in mention_roles if r)
 
     ###new###
     token = await fetch_token_data(contract)
@@ -228,6 +273,7 @@ async def on_message(message):
 
     await alert_channel.send(
         f"🚨 **GONDOLA SCAN — {scanner}**\n\n"
+        f"{first_tag}"
         f"🪙 **Token:** {name} ({symbol})\n"
         f"⛓ **Chain:** {chain.upper()} @ {dex}\n"
         f"💰 **FDV:** {fdv}\n"
