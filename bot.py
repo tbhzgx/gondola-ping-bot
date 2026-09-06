@@ -246,7 +246,7 @@ def fmt_age(ts):
 
 def fmt_mult(x):
     if x is None:
-        return "—"
+        return "N/A"
     if x >= 10:
         return f"{x:.0f}x"
     if x >= 1:
@@ -255,20 +255,40 @@ def fmt_mult(x):
 
 
 async def build_scans_report(guild, target, count):
-    """target: discord.Member or None (whole server). Returns text."""
+    """target: discord.Member or None (whole server). Returns discord.Embed."""
     target_id = target.id if target else None
     records = [s for s in scan_log if target_id is None or s["user_id"] == target_id]
     records = records[::-1][:count] # newest first
 
     who = target.display_name if target else "Server"
     if not records:
-        return f"No scans found for **{who}**."
+        return discord.Embed(
+            title="📊 No scans found",
+            description=f"Nothing recorded for **{who}** yet.",
+            color=0x2B2D31,
+        )
 
-    live = await fetch_many_tokens(
-        list({s["contract"].lower() for s in records})
-    )
+    # Solana addresses are case-sensitive base58 — query with the original
+    # casing, but key the lookup map lowercased so matching stays reliable.
+    originals = {}
+    for s in records:
+        originals.setdefault(s["contract"].lower(), s["contract"])
+    live = await fetch_many_tokens(list(originals.values()))
 
-    lines = [f"📊 **LAST {len(records)} SCANS — {who.upper()}**\n"]
+    # Resolve caller names once per unique user. get_member only sees cached
+    # members, so fall back to an API fetch rather than printing a raw ID.
+    names = {}
+    if target_id is None and guild:
+        for uid in {s["user_id"] for s in records}:
+            member = guild.get_member(uid)
+            if member is None:
+                try:
+                    member = await guild.fetch_member(uid)
+                except Exception:
+                    member = None
+            names[uid] = member.display_name if member else "Unknown"
+
+    rows = []
     for i, s in enumerate(records, 1):
         cur = live.get(s["contract"].lower())
         sym = s["symbol"] or (cur or {}).get("symbol", "?")
@@ -284,21 +304,27 @@ async def build_scans_report(guild, target, count):
             except (ValueError, ZeroDivisionError, TypeError):
                 mult = None
 
-        then = format_usd(s["fdv"]) if s["fdv"] else "—"
-        now = format_usd(cur["fdv"]) if cur and cur.get("fdv") else "dead"
-        member = guild.get_member(s["user_id"]) if guild else None
-        name = member.display_name if member else str(s["user_id"])
+        then = format_usd(s["fdv"]) if s["fdv"] else "N/A"
+        now = format_usd(cur["fdv"]) if cur and cur.get("fdv") else "N/A"
 
-        row = f"`{i:>2}.` **${sym}** {fmt_mult(mult)} — {then} → {now}"
+        # Monospace block keeps columns aligned inside the embed
+        line = (
+            f"{i:>2}. {('$' + str(sym))[:11]:<12}"
+            f"{then:>9} > {now:<9}{fmt_mult(mult):>7}"
+        )
         if target_id is None:
-            row += f" · {name}"
-        row += f" · {fmt_age(s['ts'])} ago"
-        lines.append(row)
+            line += f"  {names.get(s['user_id'], 'Unknown')[:12]}"
+        rows.append(line)
 
-    if any(s["fdv"] is None for s in records):
-        lines.append("\n_— = scanned before MC tracking was added_")
-
-    return "\n".join(lines)[:1990]
+    embed = discord.Embed(
+        title=f"📊 Last {len(records)} scans — {who}",
+        description="```\n" + "\n".join(rows)[:3900] + "\n```",
+        color=0x5865F2,
+    )
+    embed.set_footer(
+        text="MC at scan > MC now · N/A = not recorded or no live pair"
+    )
+    return embed
 
 
 @tree.command(name="scans", description="Recent CA scans with market cap and multiplier")
@@ -324,8 +350,12 @@ async def scans_command(
         report = await build_scans_report(interaction.guild, caller, count)
     except Exception as e:
         print(f"⚠️ /scans failed: {e}")
-        report = "Something went wrong building that report."
-    await interaction.followup.send(report)
+        report = discord.Embed(
+            title="⚠️ Couldn't build that report",
+            description="Something went wrong. Try again in a moment.",
+            color=0xED4245,
+        )
+    await interaction.followup.send(embed=report)
 
 
 @client.event
